@@ -1,0 +1,409 @@
+#pi Camera and AI Threads
+
+
+# Check for user imports
+try:
+    import conflocal as config
+except ImportError:
+    import config
+
+import state
+import AccessSensors
+
+import requests
+import time 
+import picamera
+import state
+import cv2
+import traceback
+import threading
+import os
+import sys
+
+import hashlib
+
+import io
+import logging
+import socketserver
+
+import numpy as np
+import datetime as dt
+
+from threading import Condition
+#from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+from http.server import BaseHTTPRequestHandler,HTTPServer
+
+from PIL import ImageFont, ImageDraw, Image
+
+
+from imutils.video import VideoStream
+import imutils
+import cv2
+import numpy as np
+#from tensorflow.python.framework import ops
+
+import AICatNotCat
+
+
+# Main Thread
+def startStreamAndAnalysis():
+    logging.info("starting startStreamAndAnalysis Thread")
+
+    startMouseAirStream()
+
+    
+
+    while (True):
+
+
+        pass
+
+
+# stream functions
+
+
+class MouseAirStreamClass():
+
+    def mjpegStream(self):
+        if (config.DEBUGMouseAir):
+            print ("--------------------")
+            print ("MouseAir: mjpegStream Started ")
+            print ("--------------------")
+
+
+
+
+        PAGE="""\
+        <html>
+        <head>
+        <title>MouseAir MJPEG Streaming </title>
+        </head>
+        <body>
+        <h1>MouseAir MJPEG Streaming </h1>
+        <img src="stream.mjpg" width="1296" height="730" />
+        </body>
+        </html>
+        """
+
+        class StreamingOutput(object):
+            def __init__(self):
+                self.frame = None
+                self.buffer = io.BytesIO()
+                self.condition = Condition()
+
+            def write(self, buf):
+                if buf.startswith(b'\xff\xd8'):
+                    # New frame, copy the existing buffer's content and notify all
+                    # clients it's available
+                    self.buffer.truncate()
+                    with self.condition:
+                        self.frame = self.buffer.getvalue()
+                        self.condition.notify_all()
+                    self.buffer.seek(0)
+                return self.buffer.write(buf)
+
+        class StreamingHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == '/':
+                    self.send_response(301)
+                    self.send_header('Location', '/index.html')
+                    self.end_headers()
+                elif self.path == '/index.html':
+                    content = PAGE.encode('utf-8')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html')
+                    self.send_header('Content-Length', len(content))
+                    self.end_headers()
+                    self.wfile.write(content)
+                elif self.path == '/stream.mjpg':
+                    self.send_response(200)
+                    self.send_header('Age', 0)
+                    self.send_header('Cache-Control', 'no-cache, private')
+                    self.send_header('Pragma', 'no-cache')
+                    self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+                    self.end_headers()
+                    try:
+                        while True:
+                            with output.condition:
+                                output.condition.wait()
+                                frame = output.frame
+                                # now add timestamp to jpeg
+                                # Convert to PIL Image
+                                cv2.CV_LOAD_IMAGE_COLOR = 1 # set flag to 1 to give colour image
+                                npframe = np.fromstring(frame, dtype=np.uint8)
+                                pil_frame = cv2.imdecode(npframe,cv2.CV_LOAD_IMAGE_COLOR)
+                                #pil_frame = cv2.imdecode(frame,-1)
+                                cv2_im_rgb = cv2.cvtColor(pil_frame, cv2.COLOR_BGR2RGB)
+                                pil_im = Image.fromarray(cv2_im_rgb)
+
+                                # convert to image, send to machine learning cat/not cat AI
+
+                                state.SensorCatNotCatLevel = AICatNotCat.AnalyzeCatNotCat(pil_img,)
+        
+                                draw = ImageDraw.Draw(pil_im)
+        
+                                # Choose a font
+                                font = ImageFont.truetype("/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
+
+                                # set up units
+                                #wind
+
+                                myText = "MouseAir %s  %i%%  Cat " % (dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),AccessSensors.readCatNotCatLevel())
+        
+                                # Draw the text
+                                color = 'rgb(255,255,255)'
+                                #draw.text((0, 0), myText,fill = color, font=font)
+        
+                                # get text size
+                                text_size = font.getsize(myText)
+        
+                                # set button size + 10px margins
+                                button_size = (text_size[0]+20, text_size[1]+10)
+        
+                                # create image with correct size and black background
+                                button_img = Image.new('RGBA', button_size, "black")
+                             
+                                #button_img.putalpha(128)
+                                # put text on button with 10px margins
+                                button_draw = ImageDraw.Draw(button_img)
+                                button_draw.text((10, 5), myText, fill = color, font=font)
+        
+                                # put button on source image in position (0, 0)
+        
+                                pil_im.paste(button_img, (0, 0))
+                                bg_w, bg_h = pil_im.size 
+                                # WeatherSTEM logo in lower left
+                                size = 64
+                                WSLimg = Image.open("static/WeatherSTEMLogoSkyBackground.png")
+                                WSLimg.thumbnail((size,size),Image.ANTIALIAS)
+                                pil_im.paste(WSLimg, (0, bg_h-size))
+        
+                                # SkyWeather log in lower right
+                                SWLimg = Image.open("static/SkyWeatherLogoSymbol.png")
+                                SWLimg.thumbnail((size,size),Image.ANTIALIAS)
+                                pil_im.paste(SWLimg, (bg_w-size, bg_h-size))
+
+                                # Save the image
+                                buf= io.BytesIO()
+                                #buf= io.StringIO()
+                                pil_im.save(buf, format= 'JPEG')
+                                frame = buf.getvalue()
+                            self.wfile.write(b'--FRAME\r\n')
+                            self.send_header('Content-Type', 'image/jpeg')
+                            self.send_header('Content-Length', len(frame))
+                            self.end_headers()
+                            self.wfile.write(frame)
+                            self.wfile.write(b'\r\n')
+                    except Exception as e:
+                        traceback.print_exc()
+                        logging.warning(
+                            'Removed streaming client %s: %s',
+                            self.client_address, str(e))
+               
+                else:
+                    self.send_error(404)
+                    self.end_headers()
+            # removes the socket error
+            '''
+            def handle(self):
+                try:
+                    BaseHTTPServer.BaseHTTPRequestHandler.handle(self)
+                except:
+                    pass
+            '''
+
+        class StreamingServer(socketserver.ThreadingMixIn, HTTPServer):
+            allow_reuse_address = True
+            daemon_threads = True
+        
+        
+        # remove stdout prints from disconnects
+
+        #with picamera.PiCamera(resolution='640x480', framerate=12) as camera:
+        #with picamera.PiCamera(resolution='640x480', framerate=24) as camera:
+        with picamera.PiCamera(resolution='1296x730', framerate=24) as camera:
+                output = StreamingOutput()
+                camera.rotation = 180
+                #camera.rotation = 270
+                camera.start_recording(output, format='mjpeg')
+                try:
+                    address = ('', 8088)
+                    server = StreamingServer(address, StreamingHandler)
+                    server.serve_forever()
+
+                finally:
+                    camera.stop_recording()
+        
+        if (config.DEBUGMouseAir):
+            print ("--------------------")
+            print ("MouseAirStream: mjpegStream Ended ")
+            print ("--------------------")
+        
+
+    def CatDetectStream(self):
+    
+
+        # initialize the video stream and allow the camera sensor to warm up
+        logging.info("starting CatDetectStream Thread")
+        print("[INFO] starting video stream...")
+        #vs = VideoStream(src=0).start()
+        vs = VideoStream(usePiCamera=True).start()
+        time.sleep(2.0)
+        vs.camera.rotation=180
+        # loop over the frames from the video stream
+        while True:
+	        # grab the frame from the threaded video stream and resize it
+	        # to have a maximum width of 400 pixels
+                frame = vs.read()
+                frame = imutils.resize(frame, width=500)
+        
+                # prepare the image to be classified by our deep learning network
+                image = cv2.resize(frame, (150, 150))
+                image = image.astype("float") / 255.0
+                image = np.asarray(image)
+	        #image = img_to_array(image)
+                image = np.expand_dims(image, axis=0)
+        
+                # classify the input image and initialize the label and
+	        # probability of the prediction
+                (NotCat, Cat) = state.model.predict(image)[0]
+                label = "Cat"
+                proba = Cat
+       
+                if (proba*100 > state.CatNotCatThresholdV14):
+                    textcolor = (0,0,255)
+                else:
+                    textcolor = (0,0,0)
+        
+                # build the label and draw it on the frame
+                label = "{}: {:.2f}%".format(label, proba * 100)
+        
+                # get the width and height of the text box
+                font_scale = 1.0
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                # set the rectangle background to white
+                rectangle_bgr = (255, 255, 255)
+        
+                (text_width, text_height) = cv2.getTextSize(label, font, fontScale=font_scale, thickness=1)[0]
+                # set the text start position
+                text_offset_x = 10
+                #text_offset_y = frame.shape[0] - 25
+                text_offset_y =40
+                # make the coords of the box with a small padding of two pixels
+                box_coords = ((text_offset_x, text_offset_y), (text_offset_x + text_width - 0, text_offset_y - text_height - 6))
+                cv2.rectangle(frame, box_coords[0], box_coords[1], rectangle_bgr, cv2.FILLED)
+                cv2.putText(frame, label, (text_offset_x, text_offset_y-4), font, fontScale=font_scale, color=textcolor, thickness=3)
+
+                # show the output frame
+                cv2.imshow("Frame", frame)
+                key = cv2.waitKey(1) & 0xFF
+
+                # update state
+                state.SensorCatNotCatLevel = proba*100
+        
+                # now let's set the appropriate variables for detection
+             
+                if (proba*100 > state.CatNotCatThresholdV14):
+                    state.CatDetectedNumberOfFrames = state.CatDetectedNumberOfFrames + 1
+                else:
+                    state.CatDetectedNumberOfFrames = 0
+             
+                if (config.DetectCatNumberOfFrames < state.CatDetectedNumberOfFrames):
+                    state.CatDetected = True
+                else:
+                    pass # Note, once we detect the cat, then it is up to the MouseAir launch logic to clear this
+
+        
+#end of MouseAirStream Class
+
+def startMouseAirStream():
+
+    if (config.DEBUGMouseAir):
+        print ("--------------------")
+        print ("MouseAirStream Started ")
+        print ("--------------------")
+
+    # start one for the stream mjpeg itself
+
+    try:
+        MouseAirStream = MouseAirStreamClass()
+
+        threadStream = threading.Thread(target = MouseAirStream.CatDetectStream)
+        #threadStream = threading.Thread(target = MouseAirStream.mjpegStream)
+       
+
+        time.sleep(2)
+        threadStream.start()
+
+    except:
+
+        if (config.DEBUGMouseAir):
+            traceback.print_exc()
+            print ("--------------------")
+            print ("MouseAirStream Failed ")
+            print ("--------------------")
+
+
+
+
+def CatAnalyzeFrame(frame):
+    
+
+                # prepare the image to be classified by our deep learning network
+                image = cv2.resize(frame, (150, 150))
+                image = image.astype("float") / 255.0
+
+                Cat = AICatNotCat.AnalyzeCatNotCat(image)
+                label = "Cat"
+                proba = Cat
+        
+                if (proba> state.CatNotCatThresholdV14):
+                    textcolor = (0,0,255)
+                else:
+                    textcolor = (0,0,0)
+        
+                # build the label and draw it on the frame
+                label = "{}: {:.2f}%".format(label, proba )
+        
+                # get the width and height of the text box
+                font_scale = 1.0
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                # set the rectangle background to white
+                rectangle_bgr = (255, 255, 255)
+        
+                (text_width, text_height) = cv2.getTextSize(label, font, fontScale=font_scale, thickness=1)[0]
+                # set the text start position
+                text_offset_x = 10
+                #text_offset_y = frame.shape[0] - 25
+                text_offset_y =40
+                # make the coords of the box with a small padding of two pixels
+                box_coords = ((text_offset_x, text_offset_y), (text_offset_x + text_width - 0, text_offset_y - text_height - 6))
+                cv2.rectangle(frame, box_coords[0], box_coords[1], rectangle_bgr, cv2.FILLED)
+                cv2.putText(frame, label, (text_offset_x, text_offset_y-4), font, fontScale=font_scale, color=textcolor, thickness=3)
+
+                # show the output frame
+                cv2.imshow("Frame", frame)
+                key = cv2.waitKey(1) & 0xFF
+
+                # update state
+                state.SensorCatNotCatLevel = proba
+        
+                # now let's set the appropriate variables for detection
+             
+                if (proba > state.CatNotCatThresholdV14):
+                    state.CatDetectedNumberOfFrames = state.CatDetectedNumberOfFrames + 1
+                    if (state.CatDetectedNumberOfFrames == 5):
+
+                        if (config.USEBLYNK):
+                            updateBlynk.blynkStatusTerminalUpdate("Possible Cat Detection")
+                        else
+                            pass
+                else:
+                    state.CatDetectedNumberOfFrames = 0
+             
+                if (config.DetectCatNumberOfFrames < state.CatDetectedNumberOfFrames):
+                    state.CatDetected = True
+                else:
+                    pass # Note, once we detect the cat, then it is up to the MouseAir launch logic to clear this
+
+        
