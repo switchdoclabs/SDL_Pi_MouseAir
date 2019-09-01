@@ -10,3 +10,4 @@ conflocal.py
 state/EnglishMetric.txt
 static/SkyCamera.py
 static/*.jpg
+FlaskServer/static

@@ -81,6 +81,8 @@ if (config.USEBLYNK):
 subjectText = "MouseAir Raspberry Pi has #rebooted."
 ipAddress = subprocess.check_output(['/bin/hostname', '-I'])
 
+splitipAddress = ipAddress.split()
+ipAddress = splitipAddress[0]
 state.LocalIPAddress = ipAddress.decode('UTF-8')
 state.LocalIPAddress = state.LocalIPAddress.rstrip()
 #ipAddress = subprocess.check_output('/bin/hostname -I')
