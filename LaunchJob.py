@@ -31,20 +31,23 @@ def launchMouse():
 
         # Step 2 - Launch Mouse 
         print("Step 2 - Mouse Launch Servo Starting")
-
-        Motors.launchServo()    
+        Motors.launchServoStart()    
 
         # Step 3 - Stop Motors
         print("Step 3 - Motors Stopping")
-        time.sleep(2.0)
         Motors.launchMotorsOff()
 
-        # Step 4 - now move Servo Back and Shutdown servos
-        print("Step 4- Ready Servo for Next Launch")    
+        # Step 4 - Launch Mouse 
+        print("Step 4 - Mouse Launch Servo Starting")
+        Motors.launchServoRetract()    
+
+
+        print("Step 5- Ready for Next Launch")    
 
 
 def checkForLaunch():
 
+  if (state.AutoManualSwitchV12 == 1): # auto launch
     if (state.CatDetected == True):
 
         if (state.SensorMouseDetect == 1):
@@ -68,4 +71,15 @@ def checkForLaunch():
             state.CatDetected = False
             state.CatDetecteNumberOfFrames = 0
 
+    else:
+       if(state.ManualLaunchV10 == 1): # launch the mouse
+         launchMouse()
+         if (config.USEBLYNK):
+             updateBlynk.blynkStatusTerminalUpdate("Manual Mouse Launched" ) 
+         state.CatDetected = False
+         state.CatDetecteNumberOfFrames = 0
+
+  else: # since manual is detected, turn off CatDetected
+      state.CatDetected = False
+      state.CatDetecteNumberOfFrames = 0
 

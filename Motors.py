@@ -94,13 +94,16 @@ def set_servo_pulse(channel, pulse):
     pulse //= pulse_length
     pwm.set_pwm(channel, pulse)
 
-def launchServo():
+def launchServoStart():
     
     # Move servo on channel O between extremes.
     pwm.set_pwm(0,  state.LaunchServoMin)
     time.sleep(state.LaunchTimeForward)
     pwm.set_pwm(0,  0 )
     time.sleep(state.LaunchTimeDelay)
+
+def launchServoRetract():
+    
     pwm.set_pwm(0,  state.LaunchServoMax)
     time.sleep(state.LaunchTimeBackward)
     pwm.set_pwm(0,  0 )

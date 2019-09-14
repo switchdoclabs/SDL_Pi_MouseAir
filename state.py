@@ -29,7 +29,8 @@ ManualLaunchV10 = 0
 PixelsV11 = 1 # Pixel On by default
 AutoManualSwitchV12 = 2
 
-MotorSpeedV13 = 240
+MotorSpeedLeftV13 = 240
+MotorSpeedRightV35 = 240
 CatNotCatThresholdV14 = 90
 UltrasonicTriggerDistanceV31 = 30
 TriggerSwitchV15 = 4

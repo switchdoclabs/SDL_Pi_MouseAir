@@ -13,11 +13,11 @@ import random
 import Motors
 import traceback
 
-print ""
-print "Test Launch Motors Version 1.0 - SwitchDoc Labs"
-print ""
-print "Program Started at:"+ time.strftime("%Y-%m-%d %H:%M:%S")
-print ""
+print ("")
+print ("Test Launch Motors Version 1.0 - SwitchDoc Labs")
+print ("")
+print ("Program Started at:"+ time.strftime("%Y-%m-%d %H:%M:%S"))
+print ("")
 
 print('moving motor')
 try:

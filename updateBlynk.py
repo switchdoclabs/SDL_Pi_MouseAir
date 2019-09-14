@@ -7,6 +7,7 @@ import state
 import traceback
 import pixelDriver
 import AccessSensors
+import Motors
 
 # Check for user imports
 try:
@@ -17,8 +18,6 @@ except ImportError:
 import LaunchJob
 
 DEBUGBLYNK = False 
-def stopFlash():
-        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V30?value=0')
 
 def blynkInit():
     # initalize button states
@@ -30,15 +29,18 @@ def blynkInit():
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V10?value='+str(state.ManualLaunchV10))
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V11?value='+str(state.PixelsV11))
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V12?value='+str(state.AutoManualSwitchV12))
+        if (DEBUGBLYNK):
+            print("AutoManualV12 :",r.text)
+        
 
-        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V13?value='+str(state.MotorSpeedV13))
+        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V13?value='+str(state.MotorSpeedLeftV13))
+        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V35?value='+str(state.MotorSpeedRightV35))
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V14?value='+str(state.CatNotCatThresholdV14))
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V15?value='+str(state.TriggerSwitchV15))
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V16?value='+str(state.EmailPictureV16))
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V17?value='+str(state.SetDefaultsV17))
         
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V18?value='+str(state.PixelColorRedV18)+'&value='+ str(state.PixelColorGreenV19)+'&value='+str(state.PixelColorBlueV20))
-        print ('rgb=', r.text)
 
 
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V21?value='+str(state.RainbowSpeedV21))
@@ -51,7 +53,6 @@ def blynkInit():
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V29?color=%23FF0000') # red
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V29?value=255') # red
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V30?color=%23FF0000') # red
-        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V30?value=255') # red
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/update/V31?value='+str(state.UltrasonicTriggerDistanceV31))
 
         myURL = "http://"+state.LocalIPAddress+":8088/stream.mjpg"
@@ -301,8 +302,36 @@ def blynkStatusUpdate():
             state.PixelsV11 = 0
 
         # read pixel style bar
-        #PixelStyleSwitchV23 
 
+        #AutoManualSwitchV12 = 2
+        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/get/V12') # read button state
+        if (DEBUGBLYNK):
+            print("blynkStatusUpdate:POSTBRV12:r.status_code:",r.status_code)
+            print("blynkStatusUpdate:POSTBRV12:r.text:",r.text)
+        tempstring = r.text.strip('["')
+        state.AutoManualSwitchV12 = int(tempstring.strip('"]'))
+        #print("spixel=", state.PixelStyleSwitchV23)
+
+
+        #MotorSpeedV13 = 240
+        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/get/V13') # read button state
+        if (DEBUGBLYNK):
+            print("blynkStatusUpdate:POSTBRV13:r.status_code:",r.status_code)
+            print("blynkStatusUpdate:POSTBRV13:r.text:",r.text)
+        tempstring = r.text.strip('["')
+        state.MotorSpeedLeftV13 = int(tempstring.strip('"]'))
+
+        #MotorSpeedRightV35 = 240
+        r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/get/V35') # read button state
+        if (DEBUGBLYNK):
+            print("blynkStatusUpdate:POSTBRV35:r.status_code:",r.status_code)
+            print("blynkStatusUpdate:POSTBRV35:r.text:",r.text)
+        tempstring = r.text.strip('["')
+        state.MotorSpeedRightV35 = int(tempstring.strip('"]'))
+        Motors.setLaunchSpeed(state.MotorSpeedRightV35, state.MotorSpeedLeftV13)
+
+
+        #PixelStyleSwitchV23 
         r = requests.get(config.BLYNK_URL+config.BLYNK_AUTH+'/get/V23') # read button state
         if (DEBUGBLYNK):
             print("blynkStatusUpdate:POSTBRV23:r.status_code:",r.status_code)

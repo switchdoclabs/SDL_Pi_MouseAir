@@ -19,7 +19,7 @@ from neopixel import *
 import pixelDriver
 
 
-config.SWVERSION = "V009"
+config.SWVERSION = "V011"
 
 
 import SensorThreads
