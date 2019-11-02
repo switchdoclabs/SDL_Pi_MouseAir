@@ -125,7 +125,8 @@ def killLogger():
 def checkForButtons():
     # see if buttons need updates or actions
     
-    updateBlynk.blynkStatusUpdate()
+    if (config.USEBLYNK):
+        updateBlynk.blynkStatusUpdate()
 
 
 

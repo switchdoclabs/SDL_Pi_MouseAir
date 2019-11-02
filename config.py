@@ -20,8 +20,8 @@ fromAddress = "YourFrom@YourFromDomain.com"
 # Blynk configuration
 ############
 
-USEBLYNK = True 
-BLYNK_AUTH = 'WwfWkJUY2SXwB03FF24olIn8yRRfaw3u'
+USEBLYNK = False 
+BLYNK_AUTH = ''
 BLYNK_URL = 'http://blynk-cloud.com/'
 
 ############
