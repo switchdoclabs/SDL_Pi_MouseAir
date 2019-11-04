@@ -6,6 +6,9 @@ from __future__ import division
 import time
 import sys
 
+import state
+import Motors
+
 sys.path.append('./PCA9685Driver')
 # Import the PCA9685 module.
 from pca9685_driver import Device
@@ -42,16 +45,18 @@ pwm.set_pwm_frequency(60)
 servo_number = 0
 print('Moving servo on channel ' + str(servo_number) +' 0, press Ctrl-C to quit...')
 try:
-    while True:
-        # Move servo on channel O between extremes.
-        pwm.set_pwm(servo_number,  servo_min)
-        time.sleep(1.4)
-        pwm.set_pwm(servo_number,  0 )
-        time.sleep(0.3)
-        pwm.set_pwm(servo_number,  servo_max)
-        time.sleep(0.6)
-        pwm.set_pwm(servo_number,  0)
-        time.sleep(0.3)
+    # do two launches
+    Motors.launchServoStart()
+    time.sleep(1.0)
+    Motors.launchServoRetract()
+
+    time.sleep(2.0)
+    Motors.launchServoStart()
+    time.sleep(1.0)
+    Motors.launchServoRetract()
+
+
+
 except:
     print('shutting down servos')
     pwm.set_pwm(servo_number,  servo_max)
